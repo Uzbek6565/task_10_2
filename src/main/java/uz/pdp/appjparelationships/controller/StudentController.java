@@ -5,15 +5,33 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
+import uz.pdp.appjparelationships.entity.Address;
+import uz.pdp.appjparelationships.entity.Group;
 import uz.pdp.appjparelationships.entity.Student;
+import uz.pdp.appjparelationships.entity.Subject;
 import uz.pdp.appjparelationships.payload.StudentDto;
-import uz.pdp.appjparelationships.repository.StudentRepository;
+import uz.pdp.appjparelationships.repository.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/student")
 public class StudentController {
     @Autowired
     StudentRepository studentRepository;
+
+    @Autowired
+    AddressRepository addressRepository;
+
+    @Autowired
+    GroupRepository groupRepository;
+
+    @Autowired
+    FacultyRepository facultyRepository;
+
+    @Autowired
+    SubjectRepository subjectRepository;
+
 
     //1. VAZIRLIK
     @GetMapping("/forMinistry")
@@ -60,7 +78,14 @@ public class StudentController {
 
     @PostMapping
     public String addNewStudent(@RequestBody StudentDto studentDto){
-
+        if (!groupRepository.existsById(studentDto.getGroupId()))
+            return "Group not found";
+        Address address = new Address(null,studentDto.getCity(), studentDto.getDistrict(), studentDto.getStreet());
+        Address savedAddress = addressRepository.save(address);
+        List<Subject> subjectList = subjectRepository.findAllByIdIn(studentDto.getSubjectId());
+        Student student = new Student(null, studentDto.getFirstName(), studentDto.getLastName(), savedAddress, groupRepository.getById(studentDto.getGroupId()), subjectList);
+        studentRepository.save(student);
+        return "Student is added";
     }
 
     @DeleteMapping("/{id}")
@@ -73,7 +98,21 @@ public class StudentController {
 
     @PutMapping("/{id}")
     public String editStudent(@PathVariable Integer id, @RequestBody StudentDto studentDto){
+        if(!studentRepository.existsById(id))
+            return "Student not found";
+        if (!groupRepository.existsById(studentDto.getGroupId()))
+            return "Group not found";
 
+        Student student = studentRepository.getById(id);
+        Address address = student.getAddress();
+        address.setCity(studentDto.getCity());
+        address.setDistrict(studentDto.getDistrict());
+        address.setStreet(studentDto.getStreet());
+        student.setGroup(groupRepository.getById(studentDto.getGroupId()));
+        student.setSubjects(subjectRepository.findAllByIdIn(studentDto.getSubjectId()));
+
+        studentRepository.save(student);
+        return "Student is added";
     }
 
 }
